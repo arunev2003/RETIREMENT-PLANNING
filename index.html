@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Financial Calculator (v3.4 - Family Ages)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .input-group { margin-bottom: 1rem; }
+        .input-label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; }
+        .input-field, .select-field { width: 100%; padding: 0.75rem; border: 1px solid #D1D5DB; border-radius: 0.375rem; box-shadow: inset 0 1px 2px 0 rgba(0,0,0,0.05); }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        .btn-primary { background-color: #2563EB; color: white; }
+        .btn-primary:hover { background-color: #1D4ED8; }
+        .btn-secondary { background-color: #4B5563; color: white; }
+        .btn-secondary:hover { background-color: #374151; }
+        .btn-success { background-color: #10B981; color: white; }
+        .btn-success:hover { background-color: #059669; }
+        .btn-info { background-color: #3B82F6; color: white; }
+        .btn-info:hover { background-color: #2563EB; }
+        .btn-warning { background-color: #F59E0B; color: white; }
+        .btn-warning:hover { background-color: #D97706; }
+        .btn-danger { background-color: #DC2626; color: white; }
+        .btn-danger:hover { background-color: #B91C1C; }
+        .table-container { max-height: 500px; overflow-y: auto; margin-top: 1rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border: 1px solid #E5E7EB; }
+        th { background-color: #F3F4F6; font-weight: 600; position: sticky; top: 0; z-index: 10; }
+        .results-section { margin-top: 2rem; padding: 1.5rem; background-color: #F9FAFB; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        .list-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem; background-color: #fff; border: 1px solid #E5E7EB; border-radius: 0.375rem; }
+        .list-item span { flex-grow: 1; }
+        .list-item-actions button { padding: 0.25rem 0.5rem; font-size: 0.75rem; line-height: 1rem; }
+        #toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 5000; }
+        .toast { background-color: #10B981; color: white; padding: 1rem; border-radius: 0.375rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 0.5rem; opacity: 0; transition: opacity 0.5s ease-in-out; }
+        .toast.show { opacity: 1; }
+        .toast.error { background-color: #EF4444; }
+        .toast.info { background-color: #3B82F6; }
+        #chartContainer { position: relative; height:40vh; width:100%; margin-top: 2rem; padding: 1rem; background-color: #fff; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .export-buttons-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
+        .plan-actions-container { display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="container mx-auto max-w-7xl bg-white p-6 md:p-8 rounded-lg shadow-xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Dynamic Financial Calculator</h1>
+            <p class="text-gray-600 mt-2">Plan your financial future with dynamic projections.</p>
+        </header>
+
+        <div class="text-center mb-6 p-3 bg-indigo-100 text-indigo-800 font-semibold rounded-lg">
+            Current Calendar Year for Planning: <span id="currentCalendarYearDisplay"></span>
+        </div>
+                
+        <div class="plan-actions-container">
+            <button id="savePlanBtn" class="btn btn-info">Save Current Plan</button>
+            <button id="clearSavedPlanBtn" class="btn btn-danger">Clear Saved Plan & Reset All Inputs</button>
+        </div>
+
+        <section id="inputsSection" class="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Personal & Time Inputs</h2>
+                <div class="input-group">
+                    <label for="currentAge" class="input-label">Your Current Age (Years)</label>
+                    <input type="number" id="currentAge" class="input-field" placeholder="e.g., 30">
+                </div>
+                <div class="input-group">
+                    <label for="retirementAge" class="input-label">Your Retirement Age (Years)</label>
+                    <input type="number" id="retirementAge" class="input-field" placeholder="e.g., 60">
+                </div>
+                <div class="input-group">
+                    <label for="lifeExpectancy" class="input-label">Your Life Expectancy (Years)</label>
+                    <input type="number" id="lifeExpectancy" class="input-field" placeholder="e.g., 90">
+                </div>
+                
+                <div class="p-4 border rounded-md mt-6 bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-600 mb-3">Family Members</h3>
+                    <div class="input-group">
+                        <label for="memberName" class="input-label">Name</label>
+                        <input type="text" id="memberName" class="input-field" placeholder="e.g., Spouse">
+                    </div>
+                    <div class="input-group">
+                        <label for="memberAge" class="input-label">Current Age</label>
+                        <input type="number" id="memberAge" class="input-field" placeholder="e.g., 28">
+                    </div>
+                    <button id="addOrUpdateMemberBtn" class="btn btn-secondary w-full mb-4">Add Member</button>
+                    <div id="membersList" class="space-y-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-white">
+                        </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Financial Inputs</h2>
+                <div class="input-group">
+                    <label for="inflationRate" class="input-label">Expected Inflation Rate (%)</label>
+                    <input type="number" id="inflationRate" class="input-field" step="0.1" placeholder="e.g., 6">
+                </div>
+                <div class="input-group">
+                    <label for="annualExpenses" class="input-label">Current Annual Expenses (at today's value)</label>
+                    <input type="number" id="annualExpenses" class="input-field" placeholder="e.g., 600000">
+                </div>
+                <div class="input-group">
+                    <label for="currency" class="input-label">Display Currency</label>
+                    <select id="currency" class="select-field">
+                        <option value="INR">Indian Rupee (₹)</option>
+                        <option value="USD">US Dollar ($)</option>
+                        <option value="EUR">Euro (€)</option>
+                        <option value="GBP">British Pound (£)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="monthlySIP" class="input-label">Monthly SIP Amount</label>
+                    <input type="number" id="monthlySIP" class="input-field" placeholder="e.g., 50000">
+                </div>
+                <div class="input-group">
+                    <label for="sipReturn" class="input-label">Expected Annual Return for SIP (%)</label>
+                    <input type="number" id="sipReturn" class="input-field" step="0.1" placeholder="e.g., 10">
+                </div>
+                
+                <div class="p-4 border rounded-md mt-6 bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-600 mb-3">Lump Sum Investments</h3>
+                    <div class="input-group">
+                        <label for="lumpSumDescription" class="input-label">Description</label>
+                        <input type="text" id="lumpSumDescription" class="input-field" placeholder="e.g., Existing Mutual Fund">
+                    </div>
+                    <div class="input-group">
+                        <label for="lumpSumAmount" class="input-label">Lump Sum Amount</label>
+                        <input type="number" id="lumpSumAmount" class="input-field" placeholder="e.g., 1000000">
+                    </div>
+                    <div class="input-group">
+                        <label for="lumpSumReturn" class="input-label">Expected Annual Return (%)</label>
+                        <input type="number" id="lumpSumReturn" class="input-field" step="0.1" placeholder="e.g., 12">
+                    </div>
+                    <button id="addOrUpdateLumpSumBtn" class="btn btn-secondary w-full mb-4">Add Lump Sum</button>
+                    <div id="lumpSumsList" class="space-y-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-white">
+                        </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-semibold text-gray-700">Financial Goals</h2>
+                    <button id="addDefaultGoalsBtn" class="btn btn-info text-xs px-3 py-1">Add Default Goals</button>
+                </div>
+                <div class="input-group">
+                    <label for="goalName" class="input-label">Goal Name</label>
+                    <input type="text" id="goalName" class="input-field" placeholder="e.g., Son's Education">
+                </div>
+                <div class="input-group">
+                    <label for="goalYear" class="input-label">Actual Calendar Year of Goal</label>
+                    <input type="number" id="goalYear" class="input-field" placeholder="e.g., 2030">
+                </div>
+                <div class="input-group">
+                    <label for="goalAmount" class="input-label">Amount</label>
+                    <input type="number" id="goalAmount" class="input-field" placeholder="e.g., 20000000">
+                </div>
+                <button id="addOrUpdateGoalBtn" class="btn btn-secondary w-full mb-4">Add Goal</button>
+                 <div id="goalsList" class="space-y-2 max-h-60 overflow-y-auto p-2 border rounded-md bg-gray-50">
+                    </div>
+            </div>
+        </section>
+
+        <div class="text-center mb-8">
+            <button id="calculateBtn" class="btn btn-primary text-lg px-8 py-3">Calculate Projections</button>
+        </div>
+
+        <section id="resultsSection" class="hidden">
+            <div id="dashboard" class="results-section mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Dashboard Summary</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div class="p-4 bg-blue-100 rounded-lg">
+                        <p class="text-sm text-blue-700">Total Corpus at Retirement</p>
+                        <p id="corpusAtRetirement" class="text-2xl font-bold text-blue-900">-</p>
+                    </div>
+                    <div class="p-4 bg-green-100 rounded-lg">
+                        <p class="text-sm text-green-700">Corpus Depletion Year (Proj. Year)</p>
+                        <p id="corpusDepletionYear" class="text-2xl font-bold text-green-900">-</p>
+                    </div>
+                    <div class="p-4 bg-red-100 rounded-lg">
+                        <p class="text-sm text-red-700">Corpus Depletion Age</p>
+                        <p id="corpusDepletionAge" class="text-2xl font-bold text-red-900">-</p>
+                    </div>
+                </div>
+            </div>
+                        
+            <div id="chartContainer" class="results-section">
+                 <h2 class="text-2xl font-semibold text-gray-800 mb-4">Corpus Composition Over Time</h2>
+                <canvas id="corpusChart"></canvas>
+            </div>
+
+            <div id="projections" class="results-section mt-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Year-wise Projections</h2>
+                <div class="table-container border rounded-lg">
+                    <table id="projectionsTable" class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th>Proj. Year</th>
+                                <th>Calendar Year</th>
+                                <th>Your Age</th>
+                                <th>Family Ages</th>
+                                <th>Corpus (Start)</th>
+                                <th>Investment</th>
+                                <th>Lump Sum Withdrawal</th>
+                                <th>Infl. Adj. Expense</th>
+                                <th>Post-Ret. Withdrawal</th>
+                                <th>Corpus (End)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectionsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+             <div class="export-buttons-container">
+                <button id="downloadDashboardBtn" class="btn btn-secondary">Download Dashboard (CSV)</button>
+                <button id="downloadProjectionsBtn" class="btn btn-secondary">Download Projections (CSV)</button>
+                <button id="exportPdfBtn" class="btn btn-success">Export as PDF</button>
+            </div>
+        </section>
+    </div>
+    <div id="toast-container"></div>
+    <script>
+        // --- Global Variables ---
+        const CURRENT_CALENDAR_YEAR = new Date().getFullYear();
+        let editingGoalIndex = -1;
+        let editingLumpSumIndex = -1;
+        let editingMemberIndex = -1; // New
+        let chartInstance = null;
+        const { jsPDF } = window.jspdf;
+        const LOCAL_STORAGE_KEY = 'financialCalculatorPlan_v3_4';
+
+        // --- DOM Elements ---
+        const currentCalendarYearDisplayEl = document.getElementById('currentCalendarYearDisplay');
+        const currencyEl = document.getElementById('currency');
+        const currentAgeEl = document.getElementById('currentAge');
+        const retirementAgeEl = document.getElementById('retirementAge');
+        const lifeExpectancyEl = document.getElementById('lifeExpectancy');
+        const monthlySIPEl = document.getElementById('monthlySIP');
+        const sipReturnEl = document.getElementById('sipReturn');
+        const inflationRateEl = document.getElementById('inflationRate');
+        const annualExpensesEl = document.getElementById('annualExpenses');
+        
+        const memberNameEl = document.getElementById('memberName'); // New
+        const memberAgeEl = document.getElementById('memberAge'); // New
+        const addOrUpdateMemberBtn = document.getElementById('addOrUpdateMemberBtn'); // New
+        const membersListEl = document.getElementById('membersList'); // New
+
+        const lumpSumDescriptionEl = document.getElementById('lumpSumDescription');
+        const lumpSumAmountEl = document.getElementById('lumpSumAmount');
+        const lumpSumReturnEl = document.getElementById('lumpSumReturn');
+        const addOrUpdateLumpSumBtn = document.getElementById('addOrUpdateLumpSumBtn');
+        const lumpSumsListEl = document.getElementById('lumpSumsList');
+        
+        const goalNameEl = document.getElementById('goalName');
+        const goalYearEl = document.getElementById('goalYear');
+        const goalAmountEl = document.getElementById('goalAmount');
+        const addOrUpdateGoalBtn = document.getElementById('addOrUpdateGoalBtn');
+        const addDefaultGoalsBtn = document.getElementById('addDefaultGoalsBtn');
+        const goalsListEl = document.getElementById('goalsList');
+        
+        const calculateBtn = document.getElementById('calculateBtn');
+        const savePlanBtn = document.getElementById('savePlanBtn');
+        const clearSavedPlanBtn = document.getElementById('clearSavedPlanBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const corpusAtRetirementEl = document.getElementById('corpusAtRetirement');
+        const corpusDepletionYearEl = document.getElementById('corpusDepletionYear');
+        const corpusDepletionAgeEl = document.getElementById('corpusDepletionAge');
+        const projectionsTableBody = document.getElementById('projectionsTableBody');
+        const downloadProjectionsBtn = document.getElementById('downloadProjectionsBtn');
+        const downloadDashboardBtn = document.getElementById('downloadDashboardBtn');
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        const toastContainer = document.getElementById('toast-container');
+        const corpusChartCtx = document.getElementById('corpusChart').getContext('2d');
+
+        let goals = [];
+        let lumpSums = [];
+        let familyMembers = []; // New
+        let projectionDataGlobal = [];
+        let dashboardDataGlobal = {};
+        let selectedCurrency = 'INR';
+
+        // --- Utility Functions ---
+        function formatCurrency(value, currencyCode = selectedCurrency) {
+            if (isNaN(value) || value === null) return '-';
+            try {
+                return new Intl.NumberFormat('en-IN', { style: 'currency', currency: currencyCode, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(value));
+            } catch (e) {
+                const symbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
+                return (symbols[currencyCode] || '') + Math.round(value).toLocaleString('en-IN');
+            }
+        }
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => { toast.remove(); }, 500); }, 3000);
+        }
+
+        // --- Plan Save/Load ---
+        function savePlan() {
+            const planData = {
+                currentAge: currentAgeEl.value, retirementAge: retirementAgeEl.value, lifeExpectancy: lifeExpectancyEl.value,
+                currency: currencyEl.value, monthlySIP: monthlySIPEl.value, sipReturn: sipReturnEl.value,
+                inflationRate: inflationRateEl.value, annualExpenses: annualExpensesEl.value,
+                goals: goals, lumpSums: lumpSums, familyMembers: familyMembers // Save family
+            };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(planData));
+            showToast('Current plan saved successfully!');
+        }
+        function loadPlan() {
+            const savedPlanJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedPlanJSON) {
+                const savedPlan = JSON.parse(savedPlanJSON);
+                currentAgeEl.value = savedPlan.currentAge || ''; retirementAgeEl.value = savedPlan.retirementAge || ''; lifeExpectancyEl.value = savedPlan.lifeExpectancy || '';
+                currencyEl.value = savedPlan.currency || 'INR'; selectedCurrency = currencyEl.value;
+                monthlySIPEl.value = savedPlan.monthlySIP || ''; sipReturnEl.value = savedPlan.sipReturn || '';
+                inflationRateEl.value = savedPlan.inflationRate || ''; annualExpensesEl.value = savedPlan.annualExpenses || '';
+                goals = savedPlan.goals || [];
+                lumpSums = savedPlan.lumpSums || [];
+                familyMembers = savedPlan.familyMembers || []; // Load family
+                showToast('Previously saved plan loaded!', 'info');
+                return true;
+            }
+            return false;
+        }
+        function clearAndResetInputs() {
+            const fieldsToClear = [currentAgeEl, retirementAgeEl, lifeExpectancyEl, monthlySIPEl, sipReturnEl, inflationRateEl, annualExpensesEl, goalNameEl, goalYearEl, goalAmountEl, lumpSumDescriptionEl, lumpSumAmountEl, lumpSumReturnEl, memberNameEl, memberAgeEl];
+            fieldsToClear.forEach(field => field.value = '');
+            currencyEl.value = 'INR'; selectedCurrency = 'INR';
+            goals = []; lumpSums = []; familyMembers = [];
+            renderGoals(); renderLumpSums(); renderMembers();
+            resultsSection.classList.add('hidden');
+            if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+            editingGoalIndex = -1; addOrUpdateGoalBtn.textContent = 'Add Goal'; addOrUpdateGoalBtn.className = 'btn btn-secondary w-full mb-4';
+            editingLumpSumIndex = -1; addOrUpdateLumpSumBtn.textContent = 'Add Lump Sum'; addOrUpdateLumpSumBtn.className = 'btn btn-secondary w-full mb-4';
+            editingMemberIndex = -1; addOrUpdateMemberBtn.textContent = 'Add Member'; addOrUpdateMemberBtn.className = 'btn btn-secondary w-full mb-4';
+        }
+        function clearSavedPlanAndReset() {
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            clearAndResetInputs();
+            showToast('Saved plan cleared. All inputs have been reset.', 'info');
+        }
+
+        // --- Family Member Management (New) ---
+        function handleAddOrUpdateMember() {
+            const name = memberNameEl.value.trim();
+            const age = parseInt(memberAgeEl.value);
+            if (!name || isNaN(age) || age < 0) {
+                showToast('Invalid family member input.', 'error'); return;
+            }
+            const newMemberData = { name, age };
+            if (editingMemberIndex === -1) {
+                familyMembers.push(newMemberData); showToast('Family member added!');
+            } else {
+                familyMembers[editingMemberIndex] = newMemberData; showToast('Member updated.', 'info');
+                editingMemberIndex = -1;
+                addOrUpdateMemberBtn.textContent = 'Add Member'; addOrUpdateMemberBtn.className = 'btn btn-secondary w-full mb-4';
+            }
+            renderMembers();
+            memberNameEl.value = ''; memberAgeEl.value = ''; memberNameEl.focus();
+        }
+        function editMember(index) {
+            if (index < 0 || index >= familyMembers.length) return;
+            editingMemberIndex = index; const memberToEdit = familyMembers[index];
+            memberNameEl.value = memberToEdit.name;
+            memberAgeEl.value = memberToEdit.age;
+            addOrUpdateMemberBtn.textContent = 'Update Member'; addOrUpdateMemberBtn.className = 'btn btn-warning w-full mb-4';
+            memberNameEl.focus();
+        }
+        function removeMember(index) {
+            if (index < 0 || index >= familyMembers.length) return;
+            familyMembers.splice(index, 1);
+            if (editingMemberIndex === index) {
+                editingMemberIndex = -1; memberNameEl.value = ''; memberAgeEl.value = '';
+                addOrUpdateMemberBtn.textContent = 'Add Member'; addOrUpdateMemberBtn.className = 'btn btn-secondary w-full mb-4';
+            } else if (editingMemberIndex > index) { editingMemberIndex--; }
+            renderMembers(); showToast(`Family member removed.`);
+        }
+        function renderMembers() {
+            membersListEl.innerHTML = '';
+            if (familyMembers.length === 0) {
+                membersListEl.innerHTML = '<p class="text-gray-500 text-sm text-center">No members added yet.</p>'; return;
+            }
+            familyMembers.forEach((member, index) => {
+                const memberDiv = document.createElement('div');
+                memberDiv.className = 'list-item';
+                memberDiv.innerHTML = `
+                    <span class="truncate">${member.name} (Age: ${member.age})</span>
+                    <div class="list-item-actions flex gap-2">
+                        <button class="btn btn-warning btn-sm" onclick="editMember(${index})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="removeMember(${index})">Del</button>
+                    </div>`;
+                membersListEl.appendChild(memberDiv);
+            });
+        }
+
+        // --- Lump Sum Management ---
+        function handleAddOrUpdateLumpSum() {
+            const description = lumpSumDescriptionEl.value.trim();
+            const amount = parseFloat(lumpSumAmountEl.value);
+            const annualReturn = parseFloat(lumpSumReturnEl.value);
+            if (!description || isNaN(amount) || amount <= 0 || isNaN(annualReturn)) {
+                showToast('Invalid lump sum input. Please fill all fields.', 'error'); return;
+            }
+            const newLumpSumData = { description, amount, annualReturn };
+            if (editingLumpSumIndex === -1) {
+                lumpSums.push(newLumpSumData); showToast('Lump sum added!');
+            } else {
+                lumpSums[editingLumpSumIndex] = newLumpSumData; showToast('Lump sum updated.', 'info');
+                editingLumpSumIndex = -1;
+                addOrUpdateLumpSumBtn.textContent = 'Add Lump Sum'; addOrUpdateLumpSumBtn.className = 'btn btn-secondary w-full mb-4';
+            }
+            renderLumpSums();
+            lumpSumDescriptionEl.value = ''; lumpSumAmountEl.value = ''; lumpSumReturnEl.value = ''; lumpSumDescriptionEl.focus();
+        }
+        function editLumpSum(index) {
+            if (index < 0 || index >= lumpSums.length) return;
+            editingLumpSumIndex = index; const lsToEdit = lumpSums[index];
+            lumpSumDescriptionEl.value = lsToEdit.description;
+            lumpSumAmountEl.value = lsToEdit.amount;
+            lumpSumReturnEl.value = lsToEdit.annualReturn;
+            addOrUpdateLumpSumBtn.textContent = 'Update Lump Sum'; addOrUpdateLumpSumBtn.className = 'btn btn-warning w-full mb-4';
+            lumpSumDescriptionEl.focus();
+        }
+        function removeLumpSum(index) {
+            if (index < 0 || index >= lumpSums.length) return;
+            lumpSums.splice(index, 1);
+            if (editingLumpSumIndex === index) {
+                editingLumpSumIndex = -1; lumpSumDescriptionEl.value = ''; lumpSumAmountEl.value = ''; lumpSumReturnEl.value = '';
+                addOrUpdateLumpSumBtn.textContent = 'Add Lump Sum'; addOrUpdateLumpSumBtn.className = 'btn btn-secondary w-full mb-4';
+            } else if (editingLumpSumIndex > index) { editingLumpSumIndex--; }
+            renderLumpSums(); showToast(`Lump sum removed.`);
+        }
+        function renderLumpSums() {
+            lumpSumsListEl.innerHTML = '';
+            if (lumpSums.length === 0) {
+                lumpSumsListEl.innerHTML = '<p class="text-gray-500 text-sm text-center">No lump sums added yet.</p>'; return;
+            }
+            lumpSums.forEach((ls, index) => {
+                const lsDiv = document.createElement('div');
+                lsDiv.className = 'list-item';
+                lsDiv.innerHTML = `
+                    <span class="truncate" title="${ls.description}">${ls.description}: ${formatCurrency(ls.amount)} @ ${ls.annualReturn}%</span>
+                    <div class="list-item-actions flex gap-2">
+                        <button class="btn btn-warning btn-sm" onclick="editLumpSum(${index})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="removeLumpSum(${index})">Del</button>
+                    </div>`;
+                lumpSumsListEl.appendChild(lsDiv);
+            });
+        }
+        
+        // --- Goal Management ---
+        function handleAddOrUpdateGoal() {
+            const name = goalNameEl.value.trim();
+            const year = parseInt(goalYearEl.value);
+            const amount = parseFloat(goalAmountEl.value);
+            if (!name || isNaN(year) || year < CURRENT_CALENDAR_YEAR || isNaN(amount) || amount <= 0) {
+                showToast('Invalid goal input. Please check all fields.', 'error'); return;
+            }
+            const newGoalData = { name, year, amount };
+            if (editingGoalIndex === -1) { goals.push(newGoalData); showToast('Goal added successfully!');
+            } else {
+                goals[editingGoalIndex] = newGoalData; showToast('Goal updated successfully!', 'info');
+                editingGoalIndex = -1; addOrUpdateGoalBtn.textContent = 'Add Goal'; addOrUpdateGoalBtn.className = 'btn btn-secondary w-full mb-4';
+            }
+            renderGoals();
+            goalNameEl.value = ''; goalYearEl.value = ''; goalAmountEl.value = ''; goalNameEl.focus();
+        }
+        function editGoal(index) {
+            if (index < 0 || index >= goals.length) return;
+            editingGoalIndex = index; const goalToEdit = goals[index];
+            goalNameEl.value = goalToEdit.name; goalYearEl.value = goalToEdit.year; goalAmountEl.value = goalToEdit.amount;
+            addOrUpdateGoalBtn.textContent = 'Update Goal'; addOrUpdateGoalBtn.className = 'btn btn-warning w-full mb-4';
+            goalNameEl.focus();
+        }
+        function removeGoal(index) {
+            if (index < 0 || index >= goals.length) return;
+            goals.splice(index, 1);
+            if (editingGoalIndex === index) {
+                editingGoalIndex = -1; goalNameEl.value = ''; goalYearEl.value = ''; goalAmountEl.value = '';
+                addOrUpdateGoalBtn.textContent = 'Add Goal'; addOrUpdateGoalBtn.className = 'btn btn-secondary w-full mb-4';
+            } else if (editingGoalIndex > index) { editingGoalIndex--; }
+            renderGoals(); showToast(`Goal removed.`);
+        }
+        function renderGoals() {
+            goalsListEl.innerHTML = '';
+            if (goals.length === 0) {
+                goalsListEl.innerHTML = '<p class="text-gray-500 text-sm text-center">No goals added yet.</p>'; return;
+            }
+            [...goals].sort((a, b) => a.year - b.year).forEach(goal => {
+                const originalIndex = goals.findIndex(g => g === goal);
+                const goalDiv = document.createElement('div');
+                goalDiv.className = 'list-item';
+                goalDiv.innerHTML = `
+                    <span class="truncate" title="${goal.name}">${goal.name} (${goal.year}, ${formatCurrency(goal.amount)})</span>
+                    <div class="list-item-actions flex gap-2">
+                        <button class="btn btn-warning btn-sm" onclick="editGoal(${originalIndex})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="removeGoal(${originalIndex})">Del</button>
+                    </div>`;
+                goalsListEl.appendChild(goalDiv);
+            });
+        }
+        function addDefaultGoals() {
+            const defaultGoalsData = [
+                { name: "House", year: 2030, amount: 10000000 },
+                { name: "Nathan Bachelors Year 1", year: 2036, amount: 750000 },
+                { name: "Nathan Bachelors Year 2", year: 2037, amount: 750000 },
+                { name: "Nathan Bachelors Year 3", year: 2038, amount: 750000 },
+                { name: "Nathan Bachelors Year 4", year: 2039, amount: 750000 },
+                { name: "Nathan Masters Year 1", year: 2040, amount: 6500000 },
+                { name: "Abigail Bachelors Year 1", year: 2041, amount: 750000 },
+                { name: "Nathan Masters Year 2", year: 2041, amount: 6500000 },
+                { name: "Abigail Bachelors Year 2", year: 2042, amount: 750000 },
+                { name: "Abigail Bachelors Year 3", year: 2043, amount: 750000 },
+                { name: "Abigail Bachelors Year 4", year: 2044, amount: 750000 },
+                { name: "Abigail Masters Year 1", year: 2045, amount: 6500000 },
+                { name: "Abigail Masters Year 2", year: 2046, amount: 6500000 },
+                { name: "Nathan Wedding", year: 2046, amount: 10000000 },
+                { name: "Abigail Wedding", year: 2048, amount: 20000000 }
+            ];
+            defaultGoalsData.forEach(defaultGoal => {
+                const exists = goals.some(g => g.name === defaultGoal.name && g.year === defaultGoal.year);
+                if (!exists) {
+                    goals.push(defaultGoal);
+                }
+            });
+            renderGoals();
+            showToast('Default goals have been added.', 'info');
+        }
+
+        // --- Calculation Logic (Updated)---
+        function calculateProjections() {
+            selectedCurrency = currencyEl.value;
+            const fields = [currentAgeEl, retirementAgeEl, lifeExpectancyEl, monthlySIPEl, sipReturnEl, inflationRateEl, annualExpensesEl];
+            if (fields.some(el => el.value.trim() === '' || isNaN(parseFloat(el.value)))) {
+                showToast('A required numerical input is missing or invalid.', 'error'); return;
+            }
+            const currentAge = parseInt(currentAgeEl.value), retirementAge = parseInt(retirementAgeEl.value), lifeExpectancy = parseInt(lifeExpectancyEl.value);
+            const monthlySIP = parseFloat(monthlySIPEl.value), sipReturnRate = parseFloat(sipReturnEl.value) / 100;
+            const inflationRate = parseFloat(inflationRateEl.value) / 100, currentAnnualExpenses = parseFloat(annualExpensesEl.value);
+            if (retirementAge <= currentAge || lifeExpectancy <= retirementAge) {
+                showToast('Ages must be logical: Current < Retirement < Life Expectancy.', 'error'); return;
+            }
+            
+            let subAccounts = lumpSums.map(ls => ({ description: ls.description, amount: ls.amount, returnRate: ls.annualReturn / 100 }));
+            const sipAccountIndex = subAccounts.push({ description: "SIP Contributions", amount: 0, returnRate: sipReturnRate }) - 1;
+
+            projectionDataGlobal = [];
+            projectionsTableBody.innerHTML = '';
+            let corpusDepleted = false;
+
+            for (let projYear = 1; projYear <= (lifeExpectancy - currentAge); projYear++) {
+                const calendarYear = CURRENT_CALENDAR_YEAR + projYear - 1;
+                const age = currentAge + projYear;
+                
+                // Calculate family ages for this year
+                const familyAgesString = familyMembers.map(m => `${m.name}: ${m.age + projYear -1}`).join(', ');
+
+                let totalCorpusStart = subAccounts.reduce((sum, acc) => sum + acc.amount, 0);
+                
+                let investmentThisYear = 0;
+                if (age <= retirementAge) {
+                    investmentThisYear = monthlySIP * 12;
+                    subAccounts[sipAccountIndex].amount += investmentThisYear;
+                }
+                
+                let lumpSumWithdrawalForThisYear = goals.filter(g => g.year === calendarYear).reduce((sum, g) => sum + g.amount, 0);
+                const inflationAdjustedExpense = currentAnnualExpenses * Math.pow(1 + inflationRate, projYear - 1);
+                let postRetirementWithdrawal = (age > retirementAge) ? inflationAdjustedExpense : 0;
+                const totalWithdrawal = lumpSumWithdrawalForThisYear + postRetirementWithdrawal;
+                
+                const totalCorpusBeforeWithdrawal = subAccounts.reduce((sum, acc) => sum + acc.amount, 0);
+                if (totalCorpusBeforeWithdrawal > 0) {
+                    subAccounts.forEach(acc => {
+                        const proportion = acc.amount / totalCorpusBeforeWithdrawal;
+                        acc.amount -= totalWithdrawal * proportion;
+                    });
+                } else {
+                    subAccounts.forEach(acc => { acc.amount -= totalWithdrawal / subAccounts.length; });
+                }
+                
+                subAccounts.forEach(acc => { if (acc.amount > 0) { acc.amount *= (1 + acc.returnRate); } });
+                
+                const totalCorpusEnd = subAccounts.reduce((sum, acc) => sum + acc.amount, 0);
+                const subAccountBalances = subAccounts.map(acc => acc.amount);
+                
+                projectionDataGlobal.push({ projYear, calendarYear, age, familyAgesString, corpusStartOfYear: totalCorpusStart, investmentThisYear, lumpSumWithdrawalForThisYear, inflationAdjustedExpense, postRetirementWithdrawal, corpusEndOfYear: totalCorpusEnd, subAccountBalances });
+                
+                const row = projectionsTableBody.insertRow();
+                row.innerHTML = `<td>${projYear}</td><td>${calendarYear}</td><td>${age}</td><td>${familyAgesString}</td><td>${formatCurrency(totalCorpusStart)}</td><td>${formatCurrency(investmentThisYear)}</td><td>${formatCurrency(lumpSumWithdrawalForThisYear)}</td><td>${formatCurrency(inflationAdjustedExpense)}</td><td>${formatCurrency(postRetirementWithdrawal)}</td><td>${formatCurrency(totalCorpusEnd)}</td>`;
+                if (totalCorpusEnd <= 0 && !corpusDepleted) { corpusDepleted = true; row.classList.add('bg-red-50', 'font-semibold'); }
+            }
+            
+            const retirementYearProjection = projectionDataGlobal.find(p => p.age === retirementAge);
+            const corpusAtRetirement = retirementYearProjection ? retirementYearProjection.corpusEndOfYear : 0;
+            const firstDepletion = projectionDataGlobal.find(p => p.corpusEndOfYear <= 0);
+            
+            corpusAtRetirementEl.textContent = formatCurrency(corpusAtRetirement);
+            corpusDepletionYearEl.textContent = firstDepletion ? firstDepletion.projYear : "Not Depleted";
+            corpusDepletionAgeEl.textContent = firstDepletion ? firstDepletion.age : "Not Depleted";
+            dashboardDataGlobal = { currentAge, retirementAge, lifeExpectancy, totalCorpusAtRetirement: corpusAtRetirement, corpusDepletionProjYear: firstDepletion ? firstDepletion.projYear : "Not Depleted", corpusDepletionAgeCalc: firstDepletion ? firstDepletion.age : "Not Depleted" };
+            
+            renderChart(subAccounts.map(acc => acc.description));
+            resultsSection.classList.remove('hidden');
+            showToast('Projections calculated successfully!');
+        }
+
+
+        // --- Chart Rendering ---
+        function renderChart(datasetLabels) {
+            if (chartInstance) { chartInstance.destroy(); }
+
+            const chartColors = [
+                'rgba(54, 162, 235, 0.7)', 'rgba(255, 99, 132, 0.7)', 'rgba(75, 192, 192, 0.7)', 
+                'rgba(255, 206, 86, 0.7)', 'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)',
+                'rgba(99, 255, 132, 0.7)', 'rgba(235, 54, 162, 0.7)'
+            ];
+
+            const datasets = datasetLabels.map((label, index) => {
+                return {
+                    label: label,
+                    data: projectionDataGlobal.map(p => p.subAccountBalances[index]),
+                    backgroundColor: chartColors[index % chartColors.length],
+                    borderColor: chartColors[index % chartColors.length].replace('0.7', '1'),
+                    borderWidth: 1,
+                    fill: true,
+                    tension: 0.2
+                };
+            });
+
+            chartInstance = new Chart(corpusChartCtx, {
+                type: 'line',
+                data: {
+                    labels: projectionDataGlobal.map(p => p.calendarYear),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                                }
+                            }
+                        },
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: { callback: (value) => formatCurrency(value) }
+                        },
+                        x: {
+                            stacked: true,
+                            title: { display: true, text: 'Calendar Year' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- PDF Export ---
+        async function exportToPDF() {
+            if (projectionDataGlobal.length === 0) { showToast('No data to export.', 'error'); return; }
+            showToast('Generating PDF...', 'info');
+            exportPdfBtn.disabled = true; exportPdfBtn.classList.add('opacity-50');
+            const doc = new jsPDF(); let yPos = 15;
+            const FONT_FAMILY = "Arial";
+            doc.setFont(FONT_FAMILY, "bold"); doc.setFontSize(18); doc.text("Financial Projection Report", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" }); yPos += 10;
+            
+            doc.setFont(FONT_FAMILY, "bold"); doc.setFontSize(14); doc.text("Input Summary", 14, yPos); yPos += 7;
+            doc.setFont(FONT_FAMILY, "normal"); doc.setFontSize(10);
+            const inputSummary = [
+                `Your Current Age: ${currentAgeEl.value} | Retirement Age: ${retirementAgeEl.value} | Life Expectancy: ${lifeExpectancyEl.value}`,
+                `Inflation: ${inflationRateEl.value}% | Annual Expenses: ${formatCurrency(parseFloat(annualExpensesEl.value) || 0)}`,
+                `Monthly SIP: ${formatCurrency(parseFloat(monthlySIPEl.value) || 0)} @ ${sipReturnEl.value}% return`
+            ];
+            inputSummary.forEach(item => { doc.text(item, 14, yPos); yPos += 6; });
+            
+            if (familyMembers.length > 0) {
+                 yPos += 2; doc.setFont(FONT_FAMILY, "bold"); doc.text("Family Members:", 14, yPos); yPos += 6; doc.setFont(FONT_FAMILY, "normal");
+                familyMembers.forEach(m => { doc.text(`- ${m.name} (Current Age: ${m.age})`, 18, yPos); yPos += 6; });
+            }
+
+            if (lumpSums.length > 0) {
+                yPos += 2; doc.setFont(FONT_FAMILY, "bold"); doc.text("Lump Sum Investments:", 14, yPos); yPos += 6; doc.setFont(FONT_FAMILY, "normal");
+                lumpSums.forEach(ls => { doc.text(`- ${ls.description}: ${formatCurrency(ls.amount)} @ ${ls.annualReturn}%`, 18, yPos); yPos += 6; });
+            }
+
+            if (goals.length > 0) {
+                yPos += 2; doc.setFont(FONT_FAMILY, "bold"); doc.text("Financial Goals:", 14, yPos); yPos += 6; doc.setFont(FONT_FAMILY, "normal");
+                goals.forEach(goal => { doc.text(`- ${goal.name} (${goal.year}, ${formatCurrency(goal.amount)})`, 18, yPos); yPos += 6; });
+            }
+
+            yPos += 5; if (yPos > 260) { doc.addPage(); yPos = 15; }
+            doc.setFont(FONT_FAMILY, "bold"); doc.setFontSize(14); doc.text("Dashboard Summary", 14, yPos); yPos += 7; doc.setFont(FONT_FAMILY, "normal");
+            const dashboardSummary = [`Total Corpus at Retirement: ${corpusAtRetirementEl.textContent}`, `Corpus Depletion Year: ${corpusDepletionYearEl.textContent}`, `Corpus Depletion Age: ${corpusDepletionAgeEl.textContent}`];
+            dashboardSummary.forEach(item => { doc.text(item, 14, yPos); yPos += 6; });
+            
+            yPos += 10; if (yPos > 180) { doc.addPage(); yPos = 15; }
+            const chartImage = chartInstance.toBase64Image('image/png', 1.0);
+            const imgProps = doc.getImageProperties(chartImage);
+            const pdfImgWidth = 180, pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+            doc.addImage(chartImage, 'PNG', 14, yPos, pdfImgWidth, pdfImgHeight);
+            yPos += pdfImgHeight + 10;
+
+            if (yPos > 200) { doc.addPage(); yPos = 15; }
+            doc.setFont(FONT_FAMILY, "bold"); doc.setFontSize(14); doc.text("Year-wise Projections", 14, yPos);
+            const head = [['Proj. Yr', 'Cal. Yr', 'Your Age', 'Family Ages', 'Corpus (Start)', 'Invest.', 'Goal W/D', 'Infl. Exp.', 'Ret. W/D', 'Corpus (End)']];
+            const body = projectionDataGlobal.map(p => [ p.projYear, p.calendarYear, p.age, p.familyAgesString, formatCurrency(p.corpusStartOfYear), formatCurrency(p.investmentThisYear), formatCurrency(p.lumpSumWithdrawalForThisYear), formatCurrency(p.inflationAdjustedExpense), formatCurrency(p.postRetirementWithdrawal), formatCurrency(p.corpusEndOfYear) ]);
+            doc.autoTable({ head: head, body: body, startY: yPos + 7, theme: 'striped', styles: { fontSize: 6.5, font: FONT_FAMILY } });
+
+            doc.save(`financial_projections_${selectedCurrency.toLowerCase()}.pdf`);
+            showToast('PDF exported successfully!', 'success');
+            exportPdfBtn.disabled = false; exportPdfBtn.classList.remove('opacity-50');
+        }
+
+        // --- CSV Download ---
+        function downloadCSV(data, filename, headers, keyMap) {
+            let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\r\n";
+            data.forEach(row => { const values = keyMap.map(key => `"${(row[key] ?? '').toString().replace(/"/g, '""')}"`); csvContent += values.join(",") + "\r\n"; });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+        downloadProjectionsBtn.addEventListener('click', () => {
+            if (projectionDataGlobal.length === 0) { showToast('No data to download.', 'error'); return; }
+            const headers = ["Proj. Year", "Calendar Year", "Your Age", "Family Ages", "Corpus (Start)", "Investment", "Lump Sum Withdrawal", "Infl. Adj. Expense", "Post-Ret. Withdrawal", `Corpus (End)`];
+            const keyMap = ["projYear", "calendarYear", "age", "familyAgesString", "corpusStartOfYear", "investmentThisYear", "lumpSumWithdrawalForThisYear", "inflationAdjustedExpense", "postRetirementWithdrawal", "corpusEndOfYear"];
+            downloadCSV(projectionDataGlobal, `projections_${selectedCurrency.toLowerCase()}.csv`, headers, keyMap);
+        });
+        downloadDashboardBtn.addEventListener('click', () => {
+            if (Object.keys(dashboardDataGlobal).length === 0) { showToast('No data to download.', 'error'); return; }
+            const headers = ["Metric", "Value"];
+            const data = [
+                { Metric: "Total Corpus at Retirement", Value: corpusAtRetirementEl.textContent },
+                { Metric: "Corpus Depletion Year", Value: corpusDepletionYearEl.textContent },
+                { Metric: "Corpus Depletion Age", Value: corpusDepletionAgeEl.textContent }
+            ];
+            downloadCSV(data, `dashboard_summary_${selectedCurrency.toLowerCase()}.csv`, headers, ["Metric", "Value"]);
+        });
+
+        // --- Initial Setup ---
+        function init() {
+            currentCalendarYearDisplayEl.textContent = CURRENT_CALENDAR_YEAR;
+            goalYearEl.placeholder = `e.g., ${CURRENT_CALENDAR_YEAR + 5}`;
+            if (!loadPlan()) {
+                clearAndResetInputs();
+            }
+            renderGoals();
+            renderLumpSums();
+            renderMembers();
+        }
+
+        // --- Event Listeners ---
+        addOrUpdateGoalBtn.addEventListener('click', handleAddOrUpdateGoal);
+        addDefaultGoalsBtn.addEventListener('click', addDefaultGoals);
+        addOrUpdateLumpSumBtn.addEventListener('click', handleAddOrUpdateLumpSum);
+        addOrUpdateMemberBtn.addEventListener('click', handleAddOrUpdateMember);
+        calculateBtn.addEventListener('click', calculateProjections);
+        savePlanBtn.addEventListener('click', savePlan);
+        clearSavedPlanBtn.addEventListener('click', clearSavedPlanAndReset);
+        exportPdfBtn.addEventListener('click', exportToPDF);
+        currencyEl.addEventListener('change', (event) => {
+            selectedCurrency = event.target.value;
+            renderGoals(); renderLumpSums();
+            if (!resultsSection.classList.contains('hidden')) {
+                showToast(`Currency changed to ${selectedCurrency}. Recalculate for a full update.`, 'info');
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
